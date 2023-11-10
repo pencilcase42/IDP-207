@@ -1,4 +1,4 @@
-#include <Serial.h>
+// #include <Serial.h>
 
 
 // motor testing procedure
@@ -26,15 +26,15 @@ void setLM(int newSpeed){
     return;
   }
   else{
-      Serial.println("Changing LM:"+str(lmSpeed)+"->"+str(newSpeed));
+      //Serial.println("Changing LM:"+str(lmSpeed)+"->"+str(newSpeed));
       lmSpeed=newSpeed;
       if (lmSpeed>0){
-        lm->run(FORWARD);
+        lm->run(BACKWARD);
         lm->setSpeed(lmSpeed);
       } else if (lmSpeed==0){
         lm->run(RELEASE);
       } else if (lmSpeed<0){
-        lm->run(BACKWARD);
+        lm->run(FORWARD);
         lm->setSpeed(-lmSpeed);
       }
   }
@@ -46,21 +46,19 @@ void setRM(int newSpeed){
     return;
   }
   else{
-    Serial.println("Changing RM:"+str(rmSpeed)+"->"+str(newSpeed));
+    // Serial.println("Changing RM:"+str(rmSpeed)+"->"+str(newSpeed));
     rmSpeed=newSpeed;
     if (rmSpeed>0) {
-      rm->run(FORWARD);
+      rm->run(BACKWARD);
       rm->setSpeed(rmSpeed);
     } else if (rmSpeed==0){
       rm->run(RELEASE);
     } else if (rmSpeed<0){
-      rm->run(BACKWARD);
+      rm->run(FORWARD);
       rm->setSpeed(-rmSpeed);
     }
   }
 }
-
-
 
 void forwards(){
   Serial.println("Move forward!");

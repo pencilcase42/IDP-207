@@ -1,11 +1,11 @@
-#include <Serial.h>
+//#include <Serial.h>
 
 // setup the 4x line sensors
 void setLineSensorValues(){
   valLeft = digitalRead(leftPin);
   valRight = digitalRead(rightPin);
-  valRearLeft = digitalRead(rLeftPin);
-  valRearRight = digitalRead(rRightPin);
+  valRLeft = digitalRead(rLeftPin);
+  valRRight = digitalRead(rRightPin);
 }
 
 
@@ -27,14 +27,17 @@ int getLP(){
   }
 }
 
-// get junction type
-int getJT(){
-  // return 0 (none), -1 (left T), 1 (right T), 2 (end)
+// // get junction type
+// int getJT(){
+//   // return 0 (none), -1 (left T), 1 (right T), 2 (end)
+  
+//   return 0;
+  /*
   if ((valRLeft==0)&&(valRRight==0)){
     return 0;
   } else {
-    Serial.println("Junction detected")
+    // Serial.println("Junction detected")
     return 3;
-  }
+  }*/
 
-}
+

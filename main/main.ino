@@ -12,12 +12,12 @@ int rmSpeed=0;
 int led = 7;
 
 // button pin#
-int button = 8;
+int button = 6;
 
 // light sensor pins (front and rear (r))
-int leftPin = 2;
-int rightPin = 6;
-int rLeftPin = 4;
+int leftPin = 4;
+int rightPin = 5;
+int rLeftPin = 2;
 int rRightPin = 3;
 
 // light sensor values (1 is white, 0 is black)
@@ -26,8 +26,8 @@ int valLeft, valRight, valRLeft, valRRight;
 
 // set the motor speeds (left motor speed, right motor speed) (-255 -> +255)
 void setMotors(int newLeft, int newRight){
-  setLM(newLeft)
-  setRM(newRight)
+  setLM(newLeft);
+  setRM(newRight);
 }
 
 
@@ -46,24 +46,24 @@ void setup() {
   } Serial.println("Motor Shield: found...");
 
   // init light sensors
-  Serial.println("Light sensors: init..")
+  Serial.println("Light sensors: init..");
   pinMode(leftPin, INPUT);
   pinMode(rightPin, INPUT);
   pinMode(rLeftPin, INPUT);
   pinMode(rRightPin, INPUT);
 
   // init led
-  Serial.println("LED: init...")
+  Serial.println("LED: init...");
   pinMode(led, OUTPUT);
   digitalWrite(led, LOW);
 
   // init button
-  //Serial.println("Button: init...")
+  Serial.println("Button: init...");
   pinMode(button, OUTPUT);
 
 
   // TESTING //
-  motorTest()
+  //motorTest();
 
 
 }
@@ -74,32 +74,33 @@ void loop() {
   // find and set line sensor values
   setLineSensorValues();
 
-  // check if at junction (0 means no junction, on line)
-  if (getJT()==0) {
-    Serial.println("Status: JUNCTION")
-    setMotors(0,0); // stop
-    // to do
-  // else on line
-  } else {
+  // // check if at junction (0 means no junction, on line)
+  // if (getJT()!=0) {
+  //   Serial.println("Status: JUNCTION");
+  //   setMotors(0,0); // stop
+  //   // to do
+  // // else on line
+  // } else {
 
-    // determine line position
-    int lp=getLP();
-    Serial.println("Status: LINE - "+str(lp));
-    Serial.println("Sensors: (left,right)="+str(valLeft)+str(valRight));
-    // if left of line
-    if (lp==-1){
-      setMotors(200,100);
-    // if on line
-    } else if (lp==0){
-      setMotors(200,200);
-    // if right of line
-    } else if (lp==1){
-      setMotors(100,200);
-    // if not on line -> stop
-    } else if (lp==2){
-      setMotors(0,0);
-    }
-
+  // determine line position
+  int lp=getLP();
+  //String message = "Status: LINE -" + lp;
+  Serial.println(lp);
+  Serial.println("Sensors: (left,right)="+valLeft+valRight);
+  // if left of line
+  if (lp==-1){
+    setMotors(160,150);
+  // if on line
+  } else if (lp==0){
+    setMotors(150,150);
+  // if right of line
+  } else if (lp==1){
+    setMotors(150,160);
+  // if not on line -> stop
+  } else if (lp==2){
+    setMotors(0,0);
   }
+
+  
 
 }
