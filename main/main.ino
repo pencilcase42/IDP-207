@@ -4,6 +4,7 @@ Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 Adafruit_DCMotor *lm = AFMS.getMotor(1);
 Adafruit_DCMotor *rm = AFMS.getMotor(2);
 
+unsigned long time;
 // motor speeds (0-255)
 int lmSpeed=0;
 int rmSpeed=0;
@@ -15,21 +16,21 @@ int led = 7;
 int button = 6;
 
 // light sensor pins (front and rear (r))
-int leftPin = 4;
-int rightPin = 5;
 int rLeftPin = 2;
 int rRightPin = 3;
+int leftPin = 4;
+int rightPin = 5;
+
 
 // light sensor values (1 is white, 0 is black)
 int valLeft, valRight, valRLeft, valRRight;
-
+String state = "line";
 
 // set the motor speeds (left motor speed, right motor speed) (-255 -> +255)
 void setMotors(int newLeft, int newRight){
   setLM(newLeft);
   setRM(newRight);
 }
-
 
 void setup() {
 
@@ -70,9 +71,53 @@ void setup() {
 
 
 void loop() {
+  if (state == "junction"){
+    setMotors(0,0);
+  }
+  if (state == "line"){
+    setLineSensorValues();
+    if (foundJunction()){
+      setMotors(0,0);
+      state = "junction";
+    }else{
+      // determine line position
+      int lp=getLP();
+      //String message = "Status: LINE -" + lp;
+      Serial.println(lp);
+      Serial.println("Sensors: (left,right)="+valLeft+valRight);
+      // if left of line
+      if (lp==-1){
+        setMotors(240,200);
+      // if on line
+      } else if (lp==0){
+        setMotors(200,200);
+      // if right of line
+      } else if (lp==1){
+        setMotors(200,240);
+      // if not on line -> stop
+      } else if (lp==2){
+        time = millis();
+        while (((millis() - time) < 2000)&& (!foundJunction())){
+          setLineSensorValues();
+          setMotors(50,50); 
+          //might be able to do following in state = 'junction' but check
+          if (foundJunction()) {
+            setMotors(0,0);
+            state="junction";
+          }
+        }
+        // ENTER LOST MODE (after 2000ms)
+        if (state!="junction"){
+          state="line";
+          setMotors(100,-100);
+        }
+        // should keep going until rears are 1 aka T junction
+      }
 
+    }
+
+  }
   // find and set line sensor values
-  setLineSensorValues();
 
   // // check if at junction (0 means no junction, on line)
   // if (getJT()!=0) {
@@ -82,25 +127,7 @@ void loop() {
   // // else on line
   // } else {
 
-  // determine line position
-  int lp=getLP();
-  //String message = "Status: LINE -" + lp;
-  Serial.println(lp);
-  Serial.println("Sensors: (left,right)="+valLeft+valRight);
-  // if left of line
-  if (lp==-1){
-    setMotors(160,150);
-  // if on line
-  } else if (lp==0){
-    setMotors(150,150);
-  // if right of line
-  } else if (lp==1){
-    setMotors(150,160);
-  // if not on line -> stop
-  } else if (lp==2){
-    setMotors(0,0);
-  }
+
 
   
-
 }

@@ -27,17 +27,13 @@ int getLP(){
   }
 }
 
-// // get junction type
-// int getJT(){
-//   // return 0 (none), -1 (left T), 1 (right T), 2 (end)
-  
-//   return 0;
-  /*
-  if ((valRLeft==0)&&(valRRight==0)){
-    return 0;
-  } else {
-    // Serial.println("Junction detected")
-    return 3;
-  }*/
+bool foundJunction(){
+  if ((valRLeft == 1) || (valRRight == 1)){
+    return true; 
+  }else{
+    return false;
+  }
+}
+
 
 
