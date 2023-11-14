@@ -10,16 +10,18 @@ int lmSpeed=0;
 int rmSpeed=0;
 
 // led pin#
-int led = 7;
+const int blueLED = 6;
 
 // button pin#
-int button = 6;
+const int greenButton = 7;
 
 // light sensor pins (front and rear (r))
-int rLeftPin = 2;
-int rRightPin = 3;
-int leftPin = 4;
-int rightPin = 5;
+const int rLeftPin = 2;
+const int rRightPin = 3;
+const int leftPin = 4;
+const int rightPin = 5;
+
+bool turningLeft = false;
 
 
 // light sensor values (1 is white, 0 is black)
@@ -55,26 +57,56 @@ void setup() {
 
   // init led
   Serial.println("LED: init...");
-  pinMode(led, OUTPUT);
-  digitalWrite(led, LOW);
+  pinMode(blueLED, OUTPUT);
+  // digitalWrite(blueLED, LOW);
 
   // init button
   Serial.println("Button: init...");
-  pinMode(button, OUTPUT);
+  pinMode(greenButton, INPUT);
 
 
   // TESTING //
   //motorTest();
 
-
 }
 
 
 void loop() {
-  if (state == "junction"){
-    setMotors(0,0);
+  setLineSensorValues();
+
+  if (digitalRead(greenButton) == HIGH){
+    Serial.println("reset button hit");
+    state = "line";
   }
-  if (state == "line"){
+  if (lmSpeed==0 && rmSpeed==0){
+    digitalWrite(blueLED, LOW);
+  } else {
+    digitalWrite(blueLED, (millis() / 500) % 2);
+  }
+
+  if (state == "junction"){
+    if (!turningLeft) {
+      setMotors(-100,100);
+      delay(1000);
+      turningLeft = true;
+    } else if (turningLeft) {
+      if((valLeft == 0) || (valRight == 0)){
+        // continue
+        Serial.println("still rotating left");
+        setMotors(-100,100);
+      } else{
+        // left line found
+        Serial.println("left line found");
+        setMotors(0,0);
+        // stop turning
+        turningLeft = false;
+        // leave junction mode
+        state = "done";
+      }
+    }
+
+  }
+  else if (state == "line"){
     setLineSensorValues();
     if (foundJunction()){
       setMotors(0,0);
@@ -97,11 +129,15 @@ void loop() {
       // if not on line -> stop
       } else if (lp==2){
         time = millis();
-        while (((millis() - time) < 2000)&& (!foundJunction())){
+        Serial.println(time);
+        while (((millis() - time) < 2000) && (!foundJunction())){
+          Serial.println("in while loop");
+          Serial.println(millis() - time);
           setLineSensorValues();
-          setMotors(50,50); 
+          setMotors(100,100); 
           //might be able to do following in state = 'junction' but check
           if (foundJunction()) {
+            Serial.println("found the junction");
             setMotors(0,0);
             state="junction";
           }
