@@ -75,9 +75,6 @@ void setup() {
   direction="North";
   turningLeft=false;
 
-
-
-
   // TESTING //
   //motorTest();
 
@@ -137,7 +134,7 @@ void loop() {
         // T JUNCTION
         Serial.println("TJ state:");
         if (foundTJ){Serial.println("foundTJ=true");} else {Serial.println("foundTJ=false");}
-        Serial.println(startTJtimer,millis(),state);
+        Serial.println(startTJtimer, millis(), state);
         if (foundTJ==false){
           Serial.println("START looking for TJ");
           startTJtimer = millis();   
@@ -184,7 +181,6 @@ void loop() {
         state = "leaving junction";
       }
     }
-
   }
 
   else if (state == "leaving junction"){
@@ -193,12 +189,7 @@ void loop() {
     Serial.println("out of junction");
     state = "line";
   }
-
-  
-
-  
-
-  }
+}
 
 
 
