@@ -19,6 +19,12 @@ void motorTest(){
   halt();
 }
 
+// set the motor speeds (left motor speed, right motor speed) (-255 -> +255)
+void setMotors(int newLeft, int newRight){
+  setLM(newLeft);
+  setRM(newRight);
+}
+
 
 // set left motor speed (-255 -> 255)
 void setLM(int newSpeed){

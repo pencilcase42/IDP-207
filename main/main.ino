@@ -4,7 +4,6 @@ Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 Adafruit_DCMotor *lm = AFMS.getMotor(1);
 Adafruit_DCMotor *rm = AFMS.getMotor(2);
 
-unsigned long time;
 // motor speeds (0-255)
 int lmSpeed=0;
 int rmSpeed=0;
@@ -14,6 +13,8 @@ const int blueLED = 6;
 
 // button pin#
 const int greenButton = 7;
+const int redButton = 8;
+
 
 // light sensor pins (front and rear (r))
 const int rLeftPin = 2;
@@ -21,18 +22,22 @@ const int rRightPin = 3;
 const int leftPin = 4;
 const int rightPin = 5;
 
-bool turningLeft = false;
+
+// TJ state
+unsigned long startTJtimer;
+bool foundTJ = false;
+
+
+
+// robot state
+String state;
+String direction;
+bool turningLeft;//REVIEW
 
 
 // light sensor values (1 is white, 0 is black)
 int valLeft, valRight, valRLeft, valRRight;
-String state = "line";
 
-// set the motor speeds (left motor speed, right motor speed) (-255 -> +255)
-void setMotors(int newLeft, int newRight){
-  setLM(newLeft);
-  setRM(newRight);
-}
 
 void setup() {
 
@@ -63,6 +68,14 @@ void setup() {
   // init button
   Serial.println("Button: init...");
   pinMode(greenButton, INPUT);
+  pinMode(redButton, INPUT);
+
+  // init robot state
+  state="line";
+  direction="North";
+  turningLeft=false;
+
+
 
 
   // TESTING //
@@ -72,42 +85,35 @@ void setup() {
 
 
 void loop() {
+
   setLineSensorValues();
 
   if (digitalRead(greenButton) == HIGH){
     Serial.println("reset button hit");
     state = "line";
+    foundTJ=false;
   }
+  if (digitalRead(redButton) == HIGH){
+    Serial.println("emergency stop hit - kill robot");
+    state = "kill";
+  }
+
   if (lmSpeed==0 && rmSpeed==0){
     digitalWrite(blueLED, LOW);
   } else {
     digitalWrite(blueLED, (millis() / 500) % 2);
   }
 
-  if (state == "junction"){
-    if (!turningLeft) {
-      setMotors(-100,100);
-      delay(1000);
-      turningLeft = true;
-    } else if (turningLeft) {
-      if((valLeft == 0) || (valRight == 0)){
-        // continue
-        Serial.println("still rotating left");
-        setMotors(-100,100);
-      } else{
-        // left line found
-        Serial.println("left line found");
-        setMotors(0,0);
-        // stop turning
-        turningLeft = false;
-        // leave junction mode
-        state = "done";
-      }
-    }
 
-  }
-  else if (state == "line"){
-    setLineSensorValues();
+  if (state=="kill"){
+    // stop
+    setMotors(0,0);
+
+  } else if (state=="lost"){
+    // random search algorithm
+    setMotors(100,-100);
+
+  } else if (state =="line"){
     if (foundJunction()){
       setMotors(0,0);
       state = "junction";
@@ -119,51 +125,80 @@ void loop() {
       Serial.println("Sensors: (left,right)="+valLeft+valRight);
       // if left of line
       if (lp==-1){
-        setMotors(240,200);
+        setMotors(240,0);
       // if on line
       } else if (lp==0){
         setMotors(200,200);
       // if right of line
       } else if (lp==1){
-        setMotors(200,240);
+        setMotors(0,240);
       // if not on line -> stop
       } else if (lp==2){
-        time = millis();
-        Serial.println(time);
-        while (((millis() - time) < 2000) && (!foundJunction())){
-          Serial.println("in while loop");
-          Serial.println(millis() - time);
-          setLineSensorValues();
-          setMotors(100,100); 
-          //might be able to do following in state = 'junction' but check
-          if (foundJunction()) {
-            Serial.println("found the junction");
+        // T JUNCTION
+        Serial.println("TJ state:");
+        if (foundTJ){Serial.println("foundTJ=true");} else {Serial.println("foundTJ=false");}
+        Serial.println(startTJtimer,millis(),state);
+        if (foundTJ==false){
+          Serial.println("START looking for TJ");
+          startTJtimer = millis();   
+          foundTJ=true;      
+        }
+        if (foundJunction()) {
+          // found, leave loop
+            Serial.println("found TJ");
             setMotors(0,0);
+            foundTJ=false;
             state="junction";
-          }
+        } else if ((millis() - startTJtimer) < 3000) {
+          // not found, but yes keep looking
+          Serial.println("looking for TJ");
+          setMotors(150,150); 
+        } else {
+          Serial.println("ABORT looking for TJ");
+          // not found, lost mode
+          state="lost";
         }
-        // ENTER LOST MODE (after 2000ms)
-        if (state!="junction"){
-          state="line";
-          setMotors(100,-100);
-        }
-        // should keep going until rears are 1 aka T junction
       }
+    }
+  }
 
+  else if (state == "junction"){
+    if (!turningLeft) {
+      turningLeft = true;
+      setMotors(150,-150);
+      delay(700);
+    } else if (turningLeft) {
+      if((valLeft == 0) || (valRight == 0)){
+        // continue
+        Serial.println("still rotating left");
+        setMotors(100,-100);
+      } else{
+        // left line found
+        Serial.println("left line found");
+        setMotors(0,0);
+        delay(2000);
+        Serial.println("have stopped");
+        // stop turning
+        turningLeft = false;
+        // leave junction mode
+        state = "leaving junction";
+      }
     }
 
   }
-  // find and set line sensor values
 
-  // // check if at junction (0 means no junction, on line)
-  // if (getJT()!=0) {
-  //   Serial.println("Status: JUNCTION");
-  //   setMotors(0,0); // stop
-  //   // to do
-  // // else on line
-  // } else {
-
-
+  else if (state == "leaving junction"){
+    setMotors(150,150);
+    delay(500);
+    Serial.println("out of junction");
+    state = "line";
+  }
 
   
-}
+
+  
+
+  }
+
+
+
