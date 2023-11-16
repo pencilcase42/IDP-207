@@ -140,7 +140,7 @@ void loop() {
         setMotors(240,0);
       // if on line
       } else if (lp==0){
-        setMotors(200,200);
+        setMotors(200,180);
       // if right of line
       } else if (lp==1){
         setMotors(0,240);
