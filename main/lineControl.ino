@@ -27,6 +27,8 @@ int getLP(){
   }
 }
 
+
+
 bool foundJunction(){
   if ((valRLeft == 1) || (valRRight == 1)){
     return true; 

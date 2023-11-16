@@ -85,9 +85,24 @@ void loop() {
 
   setLineSensorValues();
 
+  // //printing values for testing
+  // Serial.print("State: ");
+  // Serial.print(state);
+  // Serial.print(", Millis: ");
+  // Serial.print(millis());
+  // Serial.print(", startTJtimer: ");
+  // Serial.print(startTJtimer);
+  // Serial.print(", turning: ");
+  // Serial.print(turningLeft);
+  // Serial.print(", foundTJ: ");
+  // Serial.println(foundTJ);
+  // Serial.println();
+
   if (digitalRead(greenButton) == HIGH){
     Serial.println("reset button hit");
     state = "line";
+    setMotors(0,0);
+    delay(1000);
     foundTJ=false;
   }
   if (digitalRead(redButton) == HIGH){
@@ -101,25 +116,25 @@ void loop() {
     digitalWrite(blueLED, (millis() / 500) % 2);
   }
 
-
   if (state=="kill"){
     // stop
     setMotors(0,0);
 
   } else if (state=="lost"){
     // random search algorithm
-    setMotors(100,-100);
+    setMotors(0,0);
 
   } else if (state =="line"){
     if (foundJunction()){
       setMotors(0,0);
+      delay(1000);
       state = "junction";
     }else{
       // determine line position
       int lp=getLP();
       //String message = "Status: LINE -" + lp;
+      Serial.print("Line Position:");
       Serial.println(lp);
-      Serial.println("Sensors: (left,right)="+valLeft+valRight);
       // if left of line
       if (lp==-1){
         setMotors(240,0);
@@ -132,38 +147,38 @@ void loop() {
       // if not on line -> stop
       } else if (lp==2){
         // T JUNCTION
-        Serial.println("TJ state:");
-        if (foundTJ){Serial.println("foundTJ=true");} else {Serial.println("foundTJ=false");}
-        Serial.println(startTJtimer, millis(), state);
-        if (foundTJ==false){
-          Serial.println("START looking for TJ");
-          startTJtimer = millis();   
-          foundTJ=true;      
-        }
-        if (foundJunction()) {
-          // found, leave loop
-            Serial.println("found TJ");
-            setMotors(0,0);
-            foundTJ=false;
-            state="junction";
-        } else if ((millis() - startTJtimer) < 3000) {
-          // not found, but yes keep looking
-          Serial.println("looking for TJ");
-          setMotors(150,150); 
-        } else {
-          Serial.println("ABORT looking for TJ");
-          // not found, lost mode
-          state="lost";
-        }
+        Serial.println("SET STATE TO TJdvdvvdvdvdvvdvdvdvdvdvdvvdvdvvdvdvdvvd");
+        state = "TJ";
+        
       }
     }
-  }
-
-  else if (state == "junction"){
+  } else if (state == "TJ"){
+    if (foundTJ==false){
+      Serial.println("START looking for TJ");
+      startTJtimer = millis();   
+      foundTJ=true;      
+    }
+    if (foundJunction()) {
+      // found, leave loop
+        Serial.println("found TJ");
+        setMotors(0,0);
+        foundTJ=false;
+        state="junction";
+    } else if ((millis() - startTJtimer) < 3000) {
+      // not found, but yes keep looking
+      Serial.println("looking for TJ");
+      setMotors(150,150); 
+    } else {
+      Serial.println("ABORT looking for TJ");
+      // not found, lost mode
+      foundTJ = false;
+      state="lost";
+    }
+  } else if (state == "junction"){
     if (!turningLeft) {
       turningLeft = true;
       setMotors(150,-150);
-      delay(700);
+      delay(500);
     } else if (turningLeft) {
       if((valLeft == 0) || (valRight == 0)){
         // continue
@@ -173,7 +188,7 @@ void loop() {
         // left line found
         Serial.println("left line found");
         setMotors(0,0);
-        delay(2000);
+        delay(1000);
         Serial.println("have stopped");
         // stop turning
         turningLeft = false;
@@ -181,9 +196,7 @@ void loop() {
         state = "leaving junction";
       }
     }
-  }
-
-  else if (state == "leaving junction"){
+  } else if (state == "leaving junction"){
     setMotors(150,150);
     delay(500);
     Serial.println("out of junction");
