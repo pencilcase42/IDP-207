@@ -4,6 +4,13 @@ Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 Adafruit_DCMotor *lm = AFMS.getMotor(1);
 Adafruit_DCMotor *rm = AFMS.getMotor(2);
 
+
+#define MAX_RANG  (520)//the max measurement value of the module is 520cm(a little bit longer than effective max range)
+#define ADC_SOLUTION  (1023.0)//ADC accuracy of Arduino UNO is 10bit
+
+//ultrasonic sensor
+int sensityPin = A0;
+float dist, sensity;
 // motor speeds (0-255)
 int lmSpeed=0;
 int rmSpeed=0;
@@ -22,22 +29,24 @@ const int rRightPin = 3;
 const int leftPin = 4;
 const int rightPin = 5;
 
-
 // TJ state
 unsigned long startTJtimer;
 bool foundTJ = false;
 
-
+unsigned long startOutJTimer;
 
 // robot state
 String state;
 String direction;
 bool turningLeft;//REVIEW
 
-
 // light sensor values (1 is white, 0 is black)
 int valLeft, valRight, valRLeft, valRRight;
 
+void setDistanceValue(){
+  sensity = analogRead(sensityPin);
+  dist = sensity * MAX_RANG/ADC_SOLUTION;
+}
 
 void setup() {
 
@@ -83,6 +92,8 @@ void setup() {
 
 void loop() {
 
+  setDistanceValue();
+  Serial.println(dist);
   setLineSensorValues();
 
   // //printing values for testing
@@ -105,6 +116,7 @@ void loop() {
     delay(1000);
     foundTJ=false;
   }
+
   if (digitalRead(redButton) == HIGH){
     Serial.println("emergency stop hit - kill robot");
     state = "kill";
@@ -125,6 +137,7 @@ void loop() {
     setMotors(0,0);
 
   } else if (state =="line"){
+
     if (foundJunction()){
       setMotors(0,0);
       delay(1000);
@@ -140,7 +153,7 @@ void loop() {
         setMotors(240,0);
       // if on line
       } else if (lp==0){
-        setMotors(200,180);
+        setMotors(200,200);
       // if right of line
       } else if (lp==1){
         setMotors(0,240);
@@ -148,8 +161,13 @@ void loop() {
       } else if (lp==2){
         // T JUNCTION
         Serial.println("SET STATE TO TJdvdvvdvdvdvvdvdvdvdvdvdvvdvdvvdvdvdvvd");
-        state = "TJ";
-        
+        state = "TJ";  
+      }
+      // checking if close to block, will ultimately call brain
+      if (dist < 5){
+        Serial.println("Detected block");
+        setMotors(0,0);
+        state = "block";
       }
     }
   } else if (state == "TJ"){
@@ -197,11 +215,29 @@ void loop() {
       }
     }
   } else if (state == "leaving junction"){
-    setMotors(150,150);
-    delay(500);
+    startOutJTimer = millis();
+    while (millis()-startOutJTimer<800){
+      Serial.println("line following OUT OF JUNCTION");
+      setLineSensorValues();
+      int lp=getLP();
+      if (lp==-1){
+        setMotors(240,0);
+        // if on line
+      } else if (lp==0){
+        setMotors(200,200);
+        // if right of line
+      } else if (lp==1){
+        setMotors(0,240);
+        // if not on line -> stop
+      }
+    }
     Serial.println("out of junction");
     state = "line";
+  }else if (state == "block"){
+    // pick up block then go to junction, then call brain, then to start then to red/green
+    Serial.println("Enter block state");
   }
+  
 }
 
 
