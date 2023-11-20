@@ -11,6 +11,12 @@ Adafruit_DCMotor *rm = AFMS.getMotor(2);
 //ultrasonic sensor
 int sensityPin = A0;
 float dist, sensity;
+
+// magnetic sensor
+bool magnetic = true;
+
+//rotating 
+const int ninetyturn = 1200;
 // motor speeds (0-255)
 int lmSpeed=0;
 int rmSpeed=0;
@@ -21,7 +27,6 @@ const int blueLED = 6;
 // button pin#
 const int greenButton = 7;
 const int redButton = 8;
-
 
 // light sensor pins (front and rear (r))
 const int rLeftPin = 2;
@@ -47,6 +52,7 @@ void setDistanceValue(){
   sensity = analogRead(sensityPin);
   dist = sensity * MAX_RANG/ADC_SOLUTION;
 }
+
 
 void setup() {
 
@@ -111,7 +117,7 @@ void loop() {
 
   if (digitalRead(greenButton) == HIGH){
     Serial.println("reset button hit");
-    state = "line";
+    state = "line ";
     setMotors(0,0);
     delay(1000);
     foundTJ=false;
@@ -163,6 +169,7 @@ void loop() {
         Serial.println("SET STATE TO TJdvdvvdvdvdvvdvdvdvdvdvdvvdvdvvdvdvdvvd");
         state = "TJ";  
       }
+      //ULTRASONIC
       // checking if close to block, will ultimately call brain
       if (dist < 5){
         Serial.println("Detected block");
@@ -232,11 +239,104 @@ void loop() {
       }
     }
     Serial.println("out of junction");
-    state = "line";
-  }else if (state == "block"){
+    state = "line"; // once left junction go back to line state
+  } else if (state == "block"){
     // pick up block then go to junction, then call brain, then to start then to red/green
     Serial.println("Enter block state");
+  } else if (state == "start home"){
+    if (!foundJunction()){
+      setMotors(150,150);
+    } else if (foundJunction()){
+      state = "leaving junction";
+    }
+  } else if (state == "go to drop off - 1"){
+    // get out of junction and go to middle of square
+    setMotors(200,200);
+    delay(2000);
+    state == "go to drop off - 2";
+
+  } else if (state=="go to drop off - 2") {
+    // read magnetic sensor and check if magnetic or not, but for now will use boolean
+    // initiate turn
+    if (magnetic){
+      setMotors(-150,150);
+    } else {
+      setMotors(150,-150);
+    }
+    //delay for 90 degree turn 
+    delay(ninetyturn);
+    state = "go to drop off - 3";
+  } else if (state=="go to drop off - 3"){
+
+      // find edge of home square and straighten
+      setMotors(200,200);
+      if (foundJunction()){
+        // straighten
+        while ((valRLeft == 0) && (valRRight == 1)){
+            setMotors(100,0);
+        }
+        while ((valRLeft == 1) && (valRRight == 0)){
+            setMotors(0,100);
+        }
+        setMotors(0,0);
+        state="go to drop off - 4";
+      }
+  } else if (state=="go to drop off - 4"){
+
+      // leave home
+      setMotors(200,200);
+      // get out junction
+      delay(1000);
+      // find the edge of the square and stop
+      while(!foundJunction()){
+        continue;
+      }
+      setMotors(0,0);
+
+      // drop off the block
+      // TO DO
+      delay(1000);
+
+
+      //do 180 turn to go back
+      setMotors(150,-150);
+      delay(ninetyturn*2);
+      setMotors(200,200);
+      delay(1000); // get out of drop off junction
+
+      // find the edge of home square and straighten
+      while (!foundJunction()){
+        continue;     
+      }
+      while ((valRLeft == 0) && (valRRight == 1)){
+        setMotors(100,0);
+      }
+      while ((valRLeft == 1) && (valRRight == 0)){
+        setMotors(0,100);
+      }
+
+      // go to centre of home
+      setMotors(200,200);
+      delay(2000);
+    
+    //rotate back towards home junction, left or right turn, initiate rotation
+     if (magnetic){
+        setMotors(150,-150);
+      } else {
+        setMotors(-150,150);
+      }
+      delay(ninetyturn);
+      setMotors(200,200);
+
+      while (!foundJunction()){
+        continue;     
+      }
+      //stop when reached first junction
+      setMotors(0,0);
+      delay(1000);
   }
+
+
   
 }
 

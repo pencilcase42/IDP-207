@@ -27,9 +27,8 @@ int getLP(){
   }
 }
 
-
-
 bool foundJunction(){
+  setLineSensorValues();
   if ((valRLeft == 1) || (valRRight == 1)){
     return true; 
   }else{
