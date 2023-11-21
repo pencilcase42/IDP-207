@@ -16,7 +16,8 @@ float dist, sensity;
 bool magnetic = true;
 
 //rotating 
-const int ninetyturn = 1200;
+const int ninetyturn = 1000;
+String turningDirection;
 // motor speeds (0-255)
 int lmSpeed=0;
 int rmSpeed=0;
@@ -43,10 +44,13 @@ unsigned long startOutJTimer;
 // robot state
 String state;
 String direction;
-bool turningLeft;//REVIEW
+bool turning;//REVIEW
 
 // light sensor values (1 is white, 0 is black)
 int valLeft, valRight, valRLeft, valRRight;
+
+//block
+bool block_found = false;
 
 void setDistanceValue(){
   sensity = analogRead(sensityPin);
@@ -87,8 +91,8 @@ void setup() {
 
   // init robot state
   state="line";
-  direction="North";
-  turningLeft=false;
+  direction="north";
+  turning=false;
 
   // TESTING //
   //motorTest();
@@ -186,7 +190,6 @@ void loop() {
     if (foundJunction()) {
       // found, leave loop
         Serial.println("found TJ");
-        setMotors(0,0);
         foundTJ=false;
         state="junction";
     } else if ((millis() - startTJtimer) < 3000) {
@@ -200,23 +203,30 @@ void loop() {
       state="lost";
     }
   } else if (state == "junction"){
-    if (!turningLeft) {
-      turningLeft = true;
-      setMotors(150,-150);
-      delay(500);
-    } else if (turningLeft) {
+    if (!turning) {
+      turningDirection = junctionReached();
+      if (turningDirection == "forward"){
+        state = "leaving junction";
+      } else if (turningDirection == "right"){
+          setMotors(150,-150);
+          delay(500);
+      } else if (turningDirection == "left"){
+          setMotors(-150,150);
+          delay(500);
+      } else if (turningDirection == "back"){
+        setMotors(-150,150);
+        delay(ninetyturn*1.3);
+      }
+      turning = true;
+    } else if (turning) {
       if((valLeft == 0) || (valRight == 0)){
         // continue
-        Serial.println("still rotating left");
-        setMotors(100,-100);
+        Serial.println("still rotating");
       } else{
         // left line found
-        Serial.println("left line found");
-        setMotors(0,0);
-        delay(1000);
-        Serial.println("have stopped");
+        Serial.println("line found, leaving now");
         // stop turning
-        turningLeft = false;
+        turning = false;
         // leave junction mode
         state = "leaving junction";
       }
