@@ -35,6 +35,3 @@ bool foundJunction(){
     return false;
   }
 }
-
-
-
