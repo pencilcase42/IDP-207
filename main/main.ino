@@ -1,30 +1,38 @@
 #include <Adafruit_MotorShield.h>
 #include <Servo.h>
+#include <Wire.h>
+#include <VL53L0X.h>
 
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
-Adafruit_DCMotor *lm = AFMS.getMotor(1);
-Adafruit_DCMotor *rm = AFMS.getMotor(2);
+Adafruit_DCMotor *lm = AFMS.getMotor(2);
+Adafruit_DCMotor *rm = AFMS.getMotor(3);
+Adafruit_DCMotor *clawm = AFMS.getMotor(4);
 
 
-#define MAX_RANG  (520)//the max measurement value of the module is 520cm(a little bit longer than effective max range)
-#define ADC_SOLUTION  (1023.0)//ADC accuracy of Arduino UNO is 10bit
+
+// #define MAX_RANG  (520)//the max measurement value of the module is 520cm(a little bit longer than effective max range)
+// #define ADC_SOLUTION  (1023.0)//ADC accuracy of Arduino UNO is 10bit
+
 
 // time of flight sensor
-int flightPin = A0;
-float dist;
+// int flightPin = A0;
+uint16_t dist;
+VL53L0X sensor;
+
 
 //rotating 
 const int ninetyturn = 1000;
 String turningDirection;
+
 // motor speeds (0-255)
 int lmSpeed=0;
 int rmSpeed=0;
 
 // light sensor pins (front and rear (r))
-const int rLeftPin = 2;
-const int rRightPin = 3;
-const int leftPin = 4;
-const int rightPin = 5;
+const int rLeftPin = 5;
+const int rRightPin = 4;
+const int leftPin = 3;
+const int rightPin = 2;
 
 // led pin#
 const int blueLED = 6;
@@ -36,15 +44,16 @@ const int greenButton = 9;
 const int redButton = 10;
 
 // magnetic sensor
-bool magnetic = true;
+bool magnetic = false;
 const int magneticPin = 11;
+int val = 0;
 
 // claw servo
 Servo clawServo;
-const int clawServoPin = 12;
+const int clawServoPin = 10;
 int clawServoOpen = 150; // TWEAK THIS
 int clawServoClosed = 30;  // TWEAK THIS
-int clawServoPos = clawServoOpen;
+int pos = 100;
 
 
 // TJ state
@@ -65,8 +74,33 @@ int valLeft, valRight, valRLeft, valRRight;
 bool block_found = false;
 
 void setDistanceValue(){
-  sensity = analogRead(sensityPin);
-  dist = sensity * MAX_RANG/ADC_SOLUTION;
+  dist = sensor.readRangeSingleMillimeters();
+}
+
+void findMagneticType(){
+  // set magnetic
+  val = digitalRead(magneticPin);
+  if (val==HIGH){
+    magnetic = true;
+  } else {
+    magnetic = false;
+  }
+}
+
+void turnOnMagneticLED(){
+  if (magnetic) {
+    digitalWrite(redLED, HIGH);
+  } else {
+    digitalWrite(greenLED, HIGH);
+  }
+}
+
+void turnOffMagneticLED(){
+  if (magnetic) {
+    digitalWrite(redLED, LOW);
+  } else {
+    digitalWrite(greenLED, LOW);
+  }
 }
 
 
@@ -109,6 +143,14 @@ void setup() {
   // init servo
   clawServo.attach(clawServoPin);
 
+  //init ToF
+  Wire.begin();
+  sensor.setTimeout(500);
+  if (!sensor.init()){
+    Serial.println("Failed to detect and initialize sensor!");
+    while (1) {}
+  }
+
   // init robot state
   state="kill";
   direction="north";
@@ -118,48 +160,6 @@ void setup() {
   //motorTest();
 
 }
-
-
-void findMagneticType(){
-  // set magnetic
-  val = digitalRead(magneticPin);
-  if (val==HIGH){
-    magnetic = true;
-  } else {
-    magnetic = false;
-  }
-}
-
-void turnOnMagneticLED(){
-  if magnetic {
-    digitalWrite(redLED, HIGH);
-  } else {
-    digitalWrite(greenLED, HIGH);
-  }
-}
-
-void turnOffMagneticLED(){
-  if magnetic {
-    digitalWrite(redLED, LOW);
-  } else {
-    digitalWrite(greenLED, LOW);
-  }
-}
-
-void pickBlock(){
-  for (pos=clawServoClosed; pos <= clawServoOpen; pos -= 1) {
-    clawServo.write(pos);
-    delay(15);
-  }
-}
-
-void dropBlock(){
-  for (pos=clawServoOpen; pos <= clawServoClosed; pos += 1) {
-    clawServo.write(pos);
-    delay(15);
-  }
-}
-
 
 
 void loop() {
@@ -183,16 +183,16 @@ void loop() {
 
   if (digitalRead(greenButton) == HIGH){
     Serial.println("reset button hit");
-    state = "start home ";
+    state = "line";
     setMotors(0,0);
     delay(1000);
     foundTJ=false;
   }
 
-  if (digitalRead(redButton) == HIGH){
-    Serial.println("emergency stop hit - kill robot");
-    state = "kill";
-  }
+  // if (digitalRead(redButton) == HIGH){
+  //   Serial.println("emergency stop hit - kill robot");
+  //   state = "kill";
+  // }
 
   if (lmSpeed==0 && rmSpeed==0){
     digitalWrite(blueLED, LOW);
@@ -239,6 +239,23 @@ void loop() {
         Serial.println("SET STATE TO TJdvdvvdvdvdvvdvdvdvdvdvdvvdvdvvdvdvdvvd");
         state = "TJ";  
       }
+    }
+    if (dist < 30) {
+      if (block_found == false) {
+        setMotors(0,0);
+        block_found = true;
+        openClaw();
+        lowerClaw();
+        closeClaw();
+        findMagneticType();
+        turnOnMagneticLED();
+        delay(6000);
+        turnOffMagneticLED();
+        raiseClaw();
+      } else {
+        // block found, dist < 30, therefore continue on, state = line, go to junction, determine next move to home/dropoff
+      }
+    
     }
   } else if (state == "TJ"){
     if (foundTJ==false){
@@ -293,22 +310,7 @@ void loop() {
         state = "leaving junction";
       }
     }
-
-    if dist < 30 {
-      if (block_found == false) {
-        block_found = true;
-        setMotors(0,0);
-        findMagneticType();
-        turnOnMagneticLED();
-        delay(6000);
-        turnOffMagneticLED();
-      } else {
-        // block found, dist < 30, therefore continue on, state = line, go to junction, determine next move to home/dropoff
-      }
-    
-    }
-
-
+  
   } else if (state == "leaving junction"){
     startOutJTimer = millis();
     while (millis()-startOutJTimer<800){
@@ -379,8 +381,11 @@ void loop() {
 
   } else if (state == "release block"){
     // claw drops off block
-    dropBlock();
-    state = "turn and leave for home"
+    lowerClaw();
+    openClaw();
+    raiseClaw();
+    block_found = false;
+    state = "turn and leave for home";
   } else if (state == "turn and leave for home"){
     //do 180 turn to go back
     setMotors(150,-150);
@@ -414,7 +419,7 @@ void loop() {
     setMotors(0,0);
     digitalWrite(blueLED, HIGH);
     delay(6000);
-    state = "start home"
+    state = "start home";
   }
 }
 

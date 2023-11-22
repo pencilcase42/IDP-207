@@ -98,7 +98,7 @@ void MoveInDirection(String direction_to_go) {
 
 String junctionReached() { // block_found to be FALSE only after the block dropped off
   if (block_found == false) {
-    current_junction = standardpath[i]; .
+    current_junction = standardpath[i];
     next_junction = standardpath[i+1];
     i++;
     String direction_to_go = FindDirection();
