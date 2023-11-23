@@ -7,7 +7,7 @@ typedef struct {
 } Node ;
 
 Node nodes[13] = {{0, 1, -1, -1, -1},
-                  {1, 6, -1, 2, 10},
+                  {1, 6, 0, 2, 10},
                   {2, 5, -1, 3, 1},
                   {3, 4, 12, -1, 2},
                   {4, -1, 3, -1, 5},
@@ -51,6 +51,7 @@ int homepaths[10][6] = {{1, 0, 0, 0, 0, 0},
                         {8, 7, 6, 1, 0, 0},
                         {9, 8, 7, 6, 1, 0},
                         {10, 1, 0, 0, 0, 0}};
+int path[6];
 
 String FindDirection() {
   String forward = "forward";
@@ -105,7 +106,10 @@ String junctionReached() { // block_found to be FALSE only after the block dropp
     return direction_to_go;
   } else {
     int block_junction = standardpath[i];
-    int path[6] = {homepaths[block_junction]};
+    for (int k = 0; k < 6; k++) {
+     path[k] = homepaths[block_junction - 1][k];
+    }
+    Serial.println(path[j]);
     current_junction = path[j];
     if (current_junction != 0) {
       next_junction = path[j+1];

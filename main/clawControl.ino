@@ -1,23 +1,25 @@
 void lowerClaw(){
-  clawm->run(BACKWARD);
-  clawm->setSpeed(50);
-  delay(3000);
+  clawm->run(FORWARD);
+  clawm->setSpeed(100);
+  delay(6000);
+  clawm->setSpeed(0);
 }
 
 void raiseClaw(){
-  clawm->run(FORWARD);
-  clawm->setSpeed(50);
-  delay(3000);
+  clawm->run(BACKWARD);
+  clawm->setSpeed(100);
+  delay(6000);
+  clawm->setSpeed(0);
 }
-void closeClaw(){
+void openClaw(){
 
-  for (pos=clawServoClosed; pos <= clawServoOpen; pos -= 1) {
+  for (pos=clawServoClosed; pos >= clawServoOpen; pos -= 1) {
     clawServo.write(pos);
     delay(15);
   }
 }
 
-void openClaw(){
+void closeClaw(){
   for (pos=clawServoOpen; pos <= clawServoClosed; pos += 1) {
     clawServo.write(pos);
     delay(15);
