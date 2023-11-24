@@ -1,30 +1,9 @@
-// #include <Serial.h>
-
-
-// motor testing procedure
-// void motorTest(){
-//   Serial.println("Motot testtt");
-//   forwards();
-//   delay(2000);
-//   halt();
-//   delay(2000);
-//   backwards();
-//   delay(2000);
-//   halt();
-//   delay(2000);
-//   rotateRight();
-//   delay(2000);
-//   rotateLeft();
-//   delay(2000);
-//   halt();
-// }
 
 // set the motor speeds (left motor speed, right motor speed) (-255 -> +255)
 void setMotors(int newLeft, int newRight){
   setLM(newLeft);
-  setRM(newRight*0.9);
+  setRM(newRight*0.935);
 }
-
 
 // set left motor speed (-255 -> 255)
 void setLM(int newSpeed){
@@ -65,41 +44,3 @@ void setRM(int newSpeed){
     }
   }
 }
-
-// void forwards(){
-//   Serial.println("Move forward!");
-//   lm->run(FORWARD);
-//   rm->run(FORWARD);
-//   lm->setSpeed(255);
-//   rm->setSpeed(255);
-// }
-
-// void halt(){
-//   Serial.println("Stop!");
-//   lm->run(RELEASE);
-//   rm->run(RELEASE);
-// }
-  
-// void backwards(){
-//   Serial.println("Move backward!");
-//   lm->run(BACKWARD);
-//   rm->run(BACKWARD);
-//   lm->setSpeed(255);
-//   rm->setSpeed(255);
-// }
-
-// void rotateLeft(){
-//   Serial.println("Rotate left!");
-//   lm->run(BACKWARD);
-//   rm->run(FORWARD);
-//   lm->setSpeed(255);
-//   rm->setSpeed(255);
-// }
-
-// void rotateRight(){
-//   Serial.println("Rotate right!");
-//   lm->run(FORWARD);
-//   rm->run(BACKWARD);
-//   lm->setSpeed(255);
-//   rm->setSpeed(255); 
-// }

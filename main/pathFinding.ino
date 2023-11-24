@@ -6,42 +6,29 @@ typedef struct {
   int west;
 } Node ;
 
-Node nodes[13] = {{0, 1, -1, -1, -1},
+Node nodes[15] = {{0, 1, -1, -1, -1},
                   {1, 6, 0, 2, 10},
                   {2, 5, -1, 3, 1},
-                  {3, 4, 12, -1, 2},
-                  {4, -1, 3, -1, 5},
+                  {3, 4, 14, -1, 2},
+                  {4, 12, 3, -1, 5},
                   {5, -1, 2, 4, 6},
                   {6, -1, 1, 5, 7},
                   {7, -1, 10, 6, 8},
-                  {8, -1, 9, 7, -1},
-                  {9, 8, 11, 10, -1},
+                  {8, 11, 9, 7, -1},
+                  {9, 8, 13, 10, -1},
                   {10, 7, -1, 1, 9},
-                  {11, 9, -1, -1, -1},
-                  {12, 3, -1, -1, -1}};
-
-/*
-int graph[12][12]={
-		{0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0},
-		{1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0},
-		{0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1},
-		{0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0},
-		{0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0},
-		{1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0},
-    {0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0},
-    {1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0},
-    {0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
-*/
+                  {11, -1, 8, 14, -1},
+                  {12, -1, 4, -1, 13},
+                  {13, 9, -1, -1, -1},
+                  {14, 3, -1, -1, -1}};
 
 int current_junction = 0; // initialises the arduino robot to be at the start
 int next_junction = 0;
 int i = 0; // tracking which stage of the standard path it is on
 int j = 0; // tracking which stage of the home path it is on
 int standardpath[11] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-int homepaths[10][6] = {{1, 0, 0, 0, 0, 0},
+int freespacepath[10] = {0, 1, 6, 7, 8, 11, 12, 4, 5, 6};
+int homepaths[12][6] = {{1, 0, 0, 0, 0, 0},
                         {2, 1, 0, 0, 0, 0},
                         {3, 2, 1, 0, 0, 0},
                         {4, 3, 2, 1, 0, 0},
@@ -50,7 +37,9 @@ int homepaths[10][6] = {{1, 0, 0, 0, 0, 0},
                         {7, 6, 1, 0, 0, 0},
                         {8, 7, 6, 1, 0, 0},
                         {9, 8, 7, 6, 1, 0},
-                        {10, 1, 0, 0, 0, 0}};
+                        {10, 1, 0, 0, 0, 0},
+                        {11, 8, 7, 6, 1, 0},
+                        {12, 4, 5, 6, 1, 0}};
 int path[6];
 
 String FindDirection() {
@@ -79,7 +68,8 @@ String FindDirection() {
       else if (direction == "west") { direction="west"; return forward; }  
       else if (direction == "south") { direction="west"; return right; } 
   } else {
-      Serial.println("I dont know where to go");
+    state="lost";
+    Serial.println("ERROR: I don't know where to go");
   }
 }
 
@@ -96,18 +86,28 @@ void MoveInDirection(String direction_to_go) {
 }
 */
 
+int blocks_returned = 0;
 
-String junctionReached() { // block_found to be FALSE only after the block dropped off
-  if (block_found == false) {
-    current_junction = standardpath[i];
-    next_junction = standardpath[i+1];
+String junctionReached() { // blockFound to be FALSE only after the block dropped off
+  if (blockFound == false) {
+    if (blocks_returned < 2) {
+      current_junction = standardpath[i];
+      next_junction = standardpath[i+1];
+    } else {
+      current_junction = freespacepath[i];
+      next_junction = freespacepath[i+1];
+    }
     i++;
     String direction_to_go = FindDirection();
     return direction_to_go;
   } else {
-    int block_junction = standardpath[i];
+    if (blocks_returned < 2) {
+      int block_junction = standardpath[i];
+    } else {
+      int block_junction = freespacepath[i];
+    }
     for (int k = 0; k < 6; k++) {
-     path[k] = homepaths[block_junction - 1][k];
+    //  path[k] = homepaths[block_junction - 1][k];
     }
     Serial.println(path[j]);
     current_junction = path[j];

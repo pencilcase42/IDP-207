@@ -3,107 +3,89 @@
 #include <Wire.h>
 #include <VL53L0X.h>
 
+
+// MOTORS //
+
+// DC
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 Adafruit_DCMotor *lm = AFMS.getMotor(2);
 Adafruit_DCMotor *rm = AFMS.getMotor(3);
 Adafruit_DCMotor *clawm = AFMS.getMotor(4);
 
-
-
-// #define MAX_RANG  (520)//the max measurement value of the module is 520cm(a little bit longer than effective max range)
-// #define ADC_SOLUTION  (1023.0)//ADC accuracy of Arduino UNO is 10bit
-
-
-// time of flight sensor
-// int flightPin = A0;
-uint16_t dist;
-VL53L0X sensor;
-
-
-//rotating 
-const int ninetyturn = 1500;
-String turningDirection;
-
 // motor speeds (0-255)
 int lmSpeed=0;
 int rmSpeed=0;
 
-// light sensor pins (front and rear (r))
-const int rLeftPin = 5;
-const int rRightPin = 4;
-const int leftPin = 3;
-const int rightPin = 2;
-
-// led pin#
-const int blueLED = 6;
-const int redLED = 7;
-const int greenLED = 8;
-
-// button pin#
-const int greenButton = 9;
-const int redButton = 10;
-
-// magnetic sensor
-bool magnetic = false;
-const int magneticPin = 11;
-int val = 0;
-
 // claw servo
 Servo clawServo;
 const int clawServoPin = 10;
-int clawServoOpen = 0; // TWEAK THIS
-int clawServoClosed = 130;  // TWEAK THIS
+int clawServoOpen = 0; 
+int clawServoClosed = 130;  
 int pos;
 
 
-// TJ state
-unsigned long startTJtimer;
-bool foundTJ = false;
+// SENSORS // 
 
-unsigned long startOutJTimer;
+// Ultrasonic Sensor
+// #define MAX_RANG  (520)//the max measurement value of the module is 520cm(a little bit longer than effective max range)
+// #define ADC_SOLUTION  (1023.0)//ADC accuracy of Arduino UNO is 10bit
 
-// robot state
-String state;
-String direction;
-bool turning;//REVIEW
+// Time of Flight Sensor
+uint16_t dist;
+VL53L0X sensor;
+
+// Magnetic Sensor
+const int magneticPin = 11;
+int val = 0;
+
+// light sensor pins (front and rear (r))
+const int rLeftPin = 5;
+const int rRightPin = 4;
+const int leftPin = 2;
+const int rightPin = 3;
 
 // light sensor values (1 is white, 0 is black)
 int valLeft, valRight, valRLeft, valRRight;
 
-//block
-bool block_found = false;
+// button pin#
+const int greenButton = 9;
 
-void setDistanceValue(){
-  dist = sensor.readRangeSingleMillimeters();
-}
 
-void findMagneticType(){
-  // set magnetic
-  val = digitalRead(magneticPin);
-  if (val==HIGH){
-    magnetic = true;
-  } else {
-    magnetic = false;
-  }
-}
+// LEDS //
+const int blueLED = 6;
+const int redLED = 7;
+const int greenLED = 8;
 
-void turnOnMagneticLED(){
-  Serial.println(magnetic);
-  if (magnetic) {
-    digitalWrite(redLED, HIGH);
-  } else {
-    digitalWrite(greenLED, HIGH);
-  }
-}
 
-void turnOffMagneticLED(){
-  Serial.println(magnetic);
-  if (magnetic) {
-    digitalWrite(redLED, LOW);
-  } else {
-    digitalWrite(greenLED, LOW);
-  }
-}
+// STATES //
+
+// Global state
+String state;
+String previousState;
+
+// Direction
+String direction="north";
+
+// Turning
+const int ninetyTurn = 1320;  // time to rotate ninety seconds
+String turningDirection;
+bool turning=false;
+
+// T Junction
+unsigned long startTJtimer;
+bool foundTJ=false;
+
+// Leaving Junction
+unsigned long startOutJTimer;
+bool leavingJ=false;
+
+// Home Junction
+const int halfSquareTime=900; // time to move through half of home square
+
+// Block
+bool blockFound = false;
+bool magnetic = false;
+
 
 
 void setup() {
@@ -112,7 +94,7 @@ void setup() {
 
   // init serial
   Serial.begin(9600);           // set up Serial library at 9600 bps
-  Serial.println("Initialising...");
+  Serial.println("Initialising test...");
 
   // check Motor Shield
   if (!AFMS.begin()) {         // create with the default frequency 1.6KHz
@@ -136,78 +118,79 @@ void setup() {
   // init button
   Serial.println("Button: init...");
   pinMode(greenButton, INPUT);
-  pinMode(redButton, INPUT);
 
   // init magnetic
   Serial.println("Magnetic: init...");
   pinMode(magneticPin, INPUT);
 
   // init servo
+  Serial.println("Claw Servo: init...");
   clawServo.attach(clawServoPin);
 
-  //init ToF
+  // init ToF
   Wire.begin();
   sensor.setTimeout(500);
   if (!sensor.init()){
-    Serial.println("Failed to detect and initialize sensor!");
-    while (1) {}
+    Serial.println("Failed to detect and initialize time of flight sensor!");
+  } else {
+    Serial.println("Time of Flight: init DONE...");
   }
 
-  // init robot state
+  // Initial State //
   state="kill";
-  direction="north";
-  turning=false;
-
-  // TESTING //
-  //motorTest();
- 
 
 }
 
+void resetToHomeState(){
+  setMotors(0,0);
+  state="start home";
+  previousState="";
+  direction="north";
+  foundTJ=false;
+  turning=false;
+  leavingJ=false;
+  blockFound=false;
+  findMagneticType(); // reset magnetic var.
+}
 
-void loop() {
-
-  if (block_found == true){
-    dist = 500000;
-  } else{
-    setDistanceValue();
-
-  }
-  Serial.println(state);
-  setLineSensorValues();
-
-  // //printing values for testing
-  // Serial.print("State: ");
-  // Serial.print(state);
-  // Serial.print(", Millis: ");
-  // Serial.print(millis());
-  // Serial.print(", startTJtimer: ");
-  // Serial.print(startTJtimer);
-  // Serial.print(", turning: ");
-  // Serial.print(turningLeft);
-  // Serial.print(", foundTJ: ");
-  // Serial.println(foundTJ);
-  // Serial.println();
-
-  if (digitalRead(greenButton) == HIGH){
-    Serial.println("reset button hit");
-    state = "start home";
-    setMotors(0,0);
-    delay(1000);
-    foundTJ=false;
-  }
-
-  // if (digitalRead(redButton) == HIGH){
-  //   Serial.println("emergency stop hit - kill robot");
-  //   state = "kill";
-  // }
-
+void updateBlueLED(){
   if (lmSpeed==0 && rmSpeed==0){
     digitalWrite(blueLED, LOW);
   } else {
     digitalWrite(blueLED, (millis() / 500) % 2);
   }
+}
 
+void loop() {
+
+  if (blockFound){
+    dist = 500000;
+  } else{
+    setDistanceValue();
+  }
+
+  // Output current state
+  if (previousState!=state) {
+    Serial.print("STATE: ");
+    Serial.println(state);
+    previousState=state;
+  }
+
+  setLineSensorValues();
+
+  // Kill/reset button (kill first hit, reset second hit)
+  if (digitalRead(greenButton) == HIGH){
+    if (state=="kill") {
+      Serial.println("INFO: button hit - 2=reset");
+      resetToHomeState();
+      delay(2000);
+    } else {
+      state="kill";
+      Serial.println("INFO: green button hit - 1=kill");
+    }
+  }
+
+  updateBlueLED();
 
   if (state=="kill"){
     // stop
@@ -218,75 +201,83 @@ void loop() {
     setMotors(0,0);
 
   } else if (state =="line"){
-
     if (foundJunction()){
       setMotors(0,0);
       delay(1000);
-      state = "junction";
+      state="junction";
     }else{
       // determine line position
       int lp=getLP();
-      //String message = "Status: LINE -" + lp;
-      Serial.print("Line Position:");
-      Serial.println(lp);
       // if left of line
       if (lp==-1){
-        setMotors(0,240);
+        setMotors(240,0);
       // if on line
       } else if (lp==0){
         setMotors(200,200);
       // if right of line
       } else if (lp==1){
-        setMotors(240,0);
+        setMotors(0,240);
       // if not on line -> stop
       } else if (lp==2){
         // T JUNCTION
-        state = "TJ";  
+        state="TJ";  
       }
     }
-    if (dist < 100) {
-      if (block_found == false) {
-        setMotors(0,0);
-        block_found = true;
-        Serial.println("opened");
-        openClaw();
-        lowerClaw();
-        Serial.println("lowered");
-        closeClaw();
-        Serial.println("closed");
-        findMagneticType();
-        turnOnMagneticLED();
-        delay(6000);
-        turnOffMagneticLED();
-        raiseClaw();
-      } else {
-        // block found, dist < 30, therefore continue on, state = line, go to junction, determine next move to home/dropoff
-      }
-    
+    if ((dist<100) && !blockFound) {
+      setMotors(0,0);
+      blockFound=true;
+      // TO TUNE
+      Serial.print("INFO: Time of Flight=");
+      Serial.println(dist);
     }
+  } else if (state=="block and pickup"){
+    // straighten
+    Serial.println("INFO: Straightening at block");
+    setLineSensorValues();
+    while (getLP()==-1){
+      setMotors(240,0);
+      setLineSensorValues();
+    }
+    while (getLP()==1){
+      setMotors(0,240);
+      setLineSensorValues();
+    }
+
+    // pick up
+    Serial.println("INFO: Picking Up block");
+    openClaw();
+    lowerClaw();
+    closeClaw();
+    findMagneticType();
+
+    // show detection, raise claw while doing this
+    turnOnMagneticLED();    
+    raiseClaw();  // includes 5s delay
+    turnOffMagneticLED();
+
+    // return to line state
+    state="line";
+
   } else if (state == "TJ"){
-    if (foundTJ==false){
-      Serial.println("START looking for TJ");
-      startTJtimer = millis();   
+    if (!foundTJ){
+      startTJtimer=millis();   
       foundTJ=true;      
     }
     if (foundJunction()) {
       // found, leave loop
-        Serial.println("found TJ");
-        foundTJ=false;
-        state="junction";
+      foundTJ=false;
+      state="junction";
     } else if ((millis() - startTJtimer) < 3000) {
       // not found, but yes keep looking
-      Serial.println("looking for TJ");
       setMotors(150,150); 
     } else {
-      Serial.println("ABORT looking for TJ");
+      Serial.println("ERROR: abort looking for TJ");
       // not found, lost mode
-      foundTJ = false;
+      foundTJ=false;
       state="lost";
     }
   } else if (state == "junction"){
-    if (!turning) {
+    if (!turning) { // if first time at junction
       turningDirection = junctionReached();
       if (turningDirection == "forward"){
         state = "leaving junction";
@@ -301,7 +292,7 @@ void loop() {
           turning = true;
       } else if (turningDirection == "back"){
           setMotors(-150,150);
-          delay(ninetyturn*2);
+          delay(ninetyTurn*1.9);
           turning = true;
       } else if (turningDirection == "magneticturn"){
           turning = false;
@@ -310,36 +301,34 @@ void loop() {
     } else if (turning) {
       if((valLeft == 0) || (valRight == 0)){
         // continue
-        Serial.println("still rotating");
       } else{
-        // left line found
-        Serial.println("line found, leaving now");
-        // stop turning
+        // line found, leave junction
         turning = false;
-        // leave junction mode
         state = "leaving junction";
       }
     }
   
   } else if (state == "leaving junction"){
-    startOutJTimer = millis();
-    while (millis()-startOutJTimer<1200){
-      Serial.println("line following OUT OF JUNCTION");
-      setLineSensorValues();
+    if (!leavingJ){
+      leavingJ=true;
+      startOutJTimer = millis();
+    } else if (millis()-startOutJTimer<1200){
       int lp=getLP();
       if (lp==-1){
-        setMotors(0,240);
+        setMotors(240,0);
         // if on line
       } else if (lp==0){
         setMotors(200,200);
         // if right of line
       } else if (lp==1){
-        setMotors(240,0);
+        setMotors(0,240);
         // if not on line -> stop
       }
+    } else {
+      // clear of junction, now no longer leaving J
+      leavingJ=false;
+      state="line"; // once left junction go back to line state
     }
-    Serial.println("out of junction");
-    state = "line"; // once left junction go back to line state
   } else if (state == "start home"){
     if (!foundJunction()){
       setMotors(150,150);
@@ -349,7 +338,7 @@ void loop() {
   } else if (state == "go middle of home"){
     // get out of j0 and go to middle of home
     setMotors(200,200);
-    delay(800);
+    delay(halfSquareTime);
     state = "turn in home";
   } else if (state=="turn in home") {
     // check if magnetic or not, but for now will use boolean
@@ -360,21 +349,13 @@ void loop() {
       setMotors(-150,150);
     }
     //delay for 90 degree turn 
-    delay(ninetyturn);
+    delay(ninetyTurn);
     state = "move to edge";
   } else if (state=="move to edge"){
     // find edge of home square and straighten
     setMotors(200,200);
     if (foundJunction()){
-      // straighten
-      while ((valRLeft == 0) && (valRRight == 1)){
-          Serial.println("leave home - rotate right");
-          setMotors(100,0);
-      }
-      while ((valRLeft == 1) && (valRRight == 0)){
-          Serial.println("leave home - rotate left");
-          setMotors(0,100);
-      }
+      straightenRear();
       state = "leaving home";
     }
   } else if (state == "leaving home"){
@@ -396,42 +377,36 @@ void loop() {
     lowerClaw();
     openClaw();
     raiseClaw();
-    block_found = false;
+    blockFound = false;
     state = "turn and leave for home";
   } else if (state == "turn and leave for home"){
     //do 180 turn to go back
     setMotors(150,-150);
-    delay(ninetyturn*2);
+    delay(ninetyTurn*2);
     setMotors(200,200);
     delay(1000); // get out of drop off junction
     state = "find home edge";
   } else if (state == "find home edge"){
     // find the edge of home square and straighten
     if (foundJunction()){
-      while ((valRLeft == 0) && (valRRight == 1)){
-        setMotors(100,0);
-      }
-      while ((valRLeft == 1) && (valRRight == 0)){
-        setMotors(0,100);
-      } 
+      straightenRear(); 
       state = "go middle home";
-
     }
   } else if (state == "go middle home"){
     // go to centre of home
     setMotors(200,200);
-    delay(1500);
+    delay(halfSquareTime);
     //rotate back towards home junction, left or right turn, initiate rotation
     if (magnetic){
       setMotors(-150,150);
     } else {
       setMotors(150,-150);
     }
-    delay(ninetyturn);
+    delay(ninetyTurn);
     setMotors(0,0);
     digitalWrite(blueLED, HIGH);
-    delay(6000);
-    state = "start home";
+    delay(5000);
+    state="start home";
   }
 }
 
