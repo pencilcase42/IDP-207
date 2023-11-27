@@ -18,9 +18,9 @@ int rmSpeed=0;
 
 // claw servo
 Servo clawServo;
-const int clawServoPin = 10;
-int clawServoOpen = 0; 
-int clawServoClosed = 130;  
+const int clawServoPin = 11;
+int clawServoOpen = 0+180; 
+int clawServoClosed = 130+180;  
 int pos;
 
 
@@ -35,7 +35,7 @@ uint16_t dist;
 VL53L0X sensor;
 
 // Magnetic Sensor
-const int magneticPin = 11;
+const int magneticPin = 10;
 int val = 0;
 
 // light sensor pins (front and rear (r))
@@ -86,6 +86,30 @@ const int halfSquareTime=900; // time to move through half of home square
 bool blockFound = false;
 bool magnetic = false;
 
+
+// Init claw height
+void calibrateClawHeight(){
+  // raise until green button pressed
+  clawm->run(BACKWARD);
+  clawm->setSpeed(100);
+  while (digitalRead(greenButton)==LOW) {
+    continue;
+  }
+  Serial.println("INFO: Green pressed, stop raising...");
+  clawm->setSpeed(0);
+  delay(1000);
+  // lower until green button pressed
+  clawm->run(FORWARD);
+  clawm->setSpeed(100);
+  while (digitalRead(greenButton)==LOW){
+    continue;
+  }
+  Serial.println("INFO: Green pressed, stop lowering...");
+  clawm->setSpeed(0);
+  // now at bottom
+  // raise back up
+  raiseClaw();
+}
 
 
 void setup() {
@@ -139,6 +163,28 @@ void setup() {
   // Initial State //
   state="kill";
 
+  while(1){
+    Serial.println("Test open/close claw");
+    Serial.println(pos);
+    openClaw();
+    Serial.println(pos);s
+    closeClaw();
+  }
+
+  Serial.println("INFO: Calibrating claw height - raise claw, then lower claw");
+  openClaw();
+  calibrateClawHeight();
+
+  while (digitalRead(greenButton) == LOW) {
+    openClaw();
+    lowerClaw();
+    closeClaw();
+    findMagneticType();
+    Serial.println(magnetic);
+    raiseClaw();
+  }
+
+
 }
 
 void resetToHomeState(){
@@ -183,10 +229,11 @@ void loop() {
     if (state=="kill") {
       Serial.println("INFO: button hit - 2=reset");
       resetToHomeState();
-      delay(2000);
+      delay(1500);
     } else {
       state="kill";
       Serial.println("INFO: green button hit - 1=kill");
+      delay(500);
     }
   }
 
@@ -406,7 +453,7 @@ void loop() {
     setMotors(0,0);
     digitalWrite(blueLED, HIGH);
     delay(5000);
-    state="start home";
+    resetToHomeState();
   }
 }
 
