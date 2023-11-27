@@ -26,6 +26,8 @@ int current_junction = 0; // initialises the arduino robot to be at the start
 int next_junction = 0;
 int i = 0; // tracking which stage of the standard path it is on
 int j = 0; // tracking which stage of the home path it is on
+int block_junction;
+
 int standardpath[11] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 int freespacepath[10] = {0, 1, 6, 7, 8, 11, 12, 4, 5, 6};
 int homepaths[12][6] = {{1, 0, 0, 0, 0, 0},
@@ -86,7 +88,7 @@ void MoveInDirection(String direction_to_go) {
 }
 */
 
-int blocks_returned = 0;
+
 
 String junctionReached() { // blockFound to be FALSE only after the block dropped off
   if (blockFound == false) {
@@ -102,15 +104,16 @@ String junctionReached() { // blockFound to be FALSE only after the block droppe
     return direction_to_go;
   } else {
     if (blocks_returned < 2) {
-      int block_junction = standardpath[i];
+      block_junction = standardpath[i];
     } else {
-      int block_junction = freespacepath[i];
+      block_junction = freespacepath[i];
     }
     for (int k = 0; k < 6; k++) {
-    //  path[k] = homepaths[block_junction - 1][k];
+     path[k] = homepaths[block_junction - 1][k];
     }
     Serial.println(path[j]);
     current_junction = path[j];
+    
     if (current_junction != 0) {
       next_junction = path[j+1];
       j++;

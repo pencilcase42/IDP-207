@@ -38,11 +38,11 @@ void straightenRear() {
   while ((valRLeft == 0) && (valRRight == 1)){
       Serial.println("INFO: straighten rear - rotate right");
       setLineSensorValues();
-      setMotors(100,0);
+      setMotors(130,0);
   }
   while ((valRLeft == 1) && (valRRight == 0)){
       Serial.println("INFO: straighten rear - rotate left");
       setLineSensorValues();
-      setMotors(0,100);
+      setMotors(0,130);
   }
 }

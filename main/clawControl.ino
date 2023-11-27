@@ -1,14 +1,14 @@
 void lowerClaw(){
   clawm->run(FORWARD);
-  clawm->setSpeed(100);
-  delay(6000);
+  clawm->setSpeed(150);
+  delay(5000);
   clawm->setSpeed(0);
 }
 
 void raiseClaw(){
   clawm->run(BACKWARD);
-  clawm->setSpeed(100);
-  delay(6000);
+  clawm->setSpeed(150);
+  delay(5000);
   clawm->setSpeed(0);
 }
 void openClaw(){

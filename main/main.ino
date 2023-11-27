@@ -5,7 +5,7 @@
 
 
 // MOTORS //
-
+int blocks_returned = 0;
 // DC
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 Adafruit_DCMotor *lm = AFMS.getMotor(2);
@@ -19,8 +19,8 @@ int rmSpeed=0;
 // claw servo
 Servo clawServo;
 const int clawServoPin = 10;
-int clawServoOpen = 0; 
-int clawServoClosed = 130;  
+int clawServoOpen = 30; 
+int clawServoClosed = 135;  
 int pos;
 
 
@@ -41,8 +41,8 @@ int val = 0;
 // light sensor pins (front and rear (r))
 const int rLeftPin = 5;
 const int rRightPin = 4;
-const int leftPin = 2;
-const int rightPin = 3;
+const int leftPin = 3;
+const int rightPin = 2;
 
 // light sensor values (1 is white, 0 is black)
 int valLeft, valRight, valRLeft, valRRight;
@@ -80,12 +80,34 @@ unsigned long startOutJTimer;
 bool leavingJ=false;
 
 // Home Junction
-const int halfSquareTime=900; // time to move through half of home square
+const int halfSquareTime=870; // time to move through half of home square
 
 // Block
 bool blockFound = false;
 bool magnetic = false;
 
+void calibrateClawHeight(){
+  // raise until green button pressed
+  clawm->run(BACKWARD);
+  clawm->setSpeed(100);
+  while (digitalRead(greenButton)==LOW) {
+    continue;
+  }
+  Serial.println("INFO: Green pressed, stop raising...");
+  clawm->setSpeed(0);
+  delay(1000);
+  // lower until green button pressed
+  clawm->run(FORWARD);
+  clawm->setSpeed(100);
+  while (digitalRead(greenButton)==LOW){
+    continue;
+  }
+  Serial.println("INFO: Green pressed, stop lowering...");
+  clawm->setSpeed(0);
+  // now at bottom
+  // raise back up
+  raiseClaw();
+}
 
 
 void setup() {
@@ -139,10 +161,32 @@ void setup() {
   // Initial State //
   state="kill";
 
+  // while(1){
+  //   Serial.println("Test open/close claw");
+  //   Serial.println(pos);
+  //   openClaw();
+  //   Serial.println(pos);s
+  //   closeClaw();
+  // }
+
+  Serial.println("INFO: Calibrating claw height - raise claw, then lower claw");
+  openClaw();
+  calibrateClawHeight();
+
+  // while (digitalRead(greenButton) == LOW) {
+  //   openClaw();
+  //   lowerClaw();
+  //   closeClaw();
+  //   findMagneticType();
+  //   Serial.println(magnetic);
+  //   raiseClaw();
+  // }
+
 }
 
 void resetToHomeState(){
   setMotors(0,0);
+  delay(1000);
   state="start home";
   previousState="";
   direction="north";
@@ -167,6 +211,7 @@ void loop() {
     dist = 500000;
   } else{
     setDistanceValue();
+
   }
 
   // Output current state
@@ -187,7 +232,11 @@ void loop() {
     } else {
       state="kill";
       Serial.println("INFO: green button hit - 1=kill");
+      delay(1000);
     }
+    // resetToHomeState();
+    // delay(2000);
+    // Serial.println("button hit");
   }
 
   updateBlueLED();
@@ -203,7 +252,7 @@ void loop() {
   } else if (state =="line"){
     if (foundJunction()){
       setMotors(0,0);
-      delay(1000);
+      // delay(1000);
       state="junction";
     }else{
       // determine line position
@@ -223,25 +272,26 @@ void loop() {
         state="TJ";  
       }
     }
-    if ((dist<100) && !blockFound) {
+    if ((dist<75) && !blockFound) {
       setMotors(0,0);
       blockFound=true;
       // TO TUNE
       Serial.print("INFO: Time of Flight=");
       Serial.println(dist);
+      state = "block and pickup";
     }
   } else if (state=="block and pickup"){
     // straighten
     Serial.println("INFO: Straightening at block");
-    setLineSensorValues();
-    while (getLP()==-1){
-      setMotors(240,0);
-      setLineSensorValues();
-    }
-    while (getLP()==1){
-      setMotors(0,240);
-      setLineSensorValues();
-    }
+    // setLineSensorValues();
+    // while (getLP()==-1){
+    //   setMotors(240,0);
+    //   setLineSensorValues();
+    // }
+    // while (getLP()==1){
+    //   setMotors(0,240);
+    //   setLineSensorValues();
+    // }
 
     // pick up
     Serial.println("INFO: Picking Up block");
@@ -279,6 +329,7 @@ void loop() {
   } else if (state == "junction"){
     if (!turning) { // if first time at junction
       turningDirection = junctionReached();
+      Serial.println(turningDirection);
       if (turningDirection == "forward"){
         state = "leaving junction";
         turning = false;
@@ -312,7 +363,7 @@ void loop() {
     if (!leavingJ){
       leavingJ=true;
       startOutJTimer = millis();
-    } else if (millis()-startOutJTimer<1200){
+    } else if (millis()-startOutJTimer<700){
       int lp=getLP();
       if (lp==-1){
         setMotors(240,0);
@@ -338,7 +389,7 @@ void loop() {
   } else if (state == "go middle of home"){
     // get out of j0 and go to middle of home
     setMotors(200,200);
-    delay(halfSquareTime);
+    delay(900);
     state = "turn in home";
   } else if (state=="turn in home") {
     // check if magnetic or not, but for now will use boolean
@@ -355,7 +406,7 @@ void loop() {
     // find edge of home square and straighten
     setMotors(200,200);
     if (foundJunction()){
-      straightenRear();
+      // straightenRear();
       state = "leaving home";
     }
   } else if (state == "leaving home"){
@@ -379,23 +430,28 @@ void loop() {
     raiseClaw();
     blockFound = false;
     state = "turn and leave for home";
+    blocks_returned = blocks_returned +1;
   } else if (state == "turn and leave for home"){
     //do 180 turn to go back
-    setMotors(150,-150);
-    delay(ninetyTurn*2);
+    if (magnetic){
+      setMotors(150,-150);
+    } else {
+      setMotors(-150,150);
+    }
+    delay(ninetyTurn*2.1);
     setMotors(200,200);
     delay(1000); // get out of drop off junction
     state = "find home edge";
   } else if (state == "find home edge"){
     // find the edge of home square and straighten
     if (foundJunction()){
-      straightenRear(); 
+      // straightenRear(); 
       state = "go middle home";
     }
   } else if (state == "go middle home"){
     // go to centre of home
     setMotors(200,200);
-    delay(halfSquareTime);
+    delay(850);
     //rotate back towards home junction, left or right turn, initiate rotation
     if (magnetic){
       setMotors(-150,150);
@@ -406,7 +462,7 @@ void loop() {
     setMotors(0,0);
     digitalWrite(blueLED, HIGH);
     delay(5000);
-    state="start home";
+    resetToHomeState();
   }
 }
 

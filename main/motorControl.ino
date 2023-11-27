@@ -2,7 +2,7 @@
 // set the motor speeds (left motor speed, right motor speed) (-255 -> +255)
 void setMotors(int newLeft, int newRight){
   setLM(newLeft);
-  setRM(newRight*0.935);
+  setRM(newRight*0.9);
 }
 
 // set left motor speed (-255 -> 255)
