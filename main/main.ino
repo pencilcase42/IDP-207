@@ -34,7 +34,7 @@ int sensityPin = A0;
 float ultraDist = 500000, sensity;
 
 // Magnetic Sensor
-const int magneticPin = 11;
+const int magneticPin = 10;
 int val = 0;
 
 // light sensor pins (front and rear (r))
@@ -92,6 +92,7 @@ int currentJunction = 0; // initialises the arduino robot to be at the start
 int nextJunction = 0;
 int i = 0; // tracking which stage of the standard path it is on
 int j = 0; // tracking which stage of the home path it is on
+
 
 void setup() {
 
