@@ -2,16 +2,16 @@
 // set the motor speeds (left motor speed, right motor speed) (-255 -> +255)
 void setMotors(int newLeft, int newRight){
   setLM(newLeft);
-  setRM(newRight*0.9);
+  setRM(newRight*0.928);// right motor slightly faster
 }
 
 // set left motor speed (-255 -> 255)
 void setLM(int newSpeed){
+  // only setting speed if different to previous one
   if (newSpeed==lmSpeed){
     return;
   }
   else{
-      //Serial.println("Changing LM:"+str(lmSpeed)+"->"+str(newSpeed));
       lmSpeed=newSpeed;
       if (lmSpeed>0){
         lm->run(FORWARD);
@@ -27,11 +27,11 @@ void setLM(int newSpeed){
 
 // set right motor speed (-255 -> 255)
 void setRM(int newSpeed){
+  // only setting speed if different to previous one
   if (newSpeed==rmSpeed){
     return;
   }
   else{
-    // Serial.println("Changing RM:"+str(rmSpeed)+"->"+str(newSpeed));
     rmSpeed=newSpeed;
     if (rmSpeed>0) {
       rm->run(FORWARD);

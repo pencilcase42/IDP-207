@@ -1,3 +1,22 @@
+//Diagram of board - M (Magnetic drop off), H (Home), NM (Non magnetic drop off)
+/*
+      11 ------------------------------- 12
+      |                                  |
+      |                                  |
+      |                                  |
+      8 ----- 7 ------ 6 ------ 5 ------ 4
+      |       |        |        |        |
+      |       |        |        |        |
+      9 ----- 10 ----- 1 ------ 2 ------ 3
+      |                |                 |
+      |                |                 |
+   *------*         *--0---*          *------*
+   |  M   |         |   H  |          | NM   |
+   |      |         |      |          |      |
+   *------*         *------*          *------*
+
+*/
+
 typedef struct {
   int number;
   int north;
@@ -6,6 +25,7 @@ typedef struct {
   int west;
 } Node ;
 
+//defining the nodes
 Node nodes[15] = {{0, 1, -1, -1, -1},
                   {1, 6, 0, 2, 10},
                   {2, 5, -1, 3, 1},
@@ -17,19 +37,16 @@ Node nodes[15] = {{0, 1, -1, -1, -1},
                   {8, 11, 9, 7, -1},
                   {9, 8, 13, 10, -1},
                   {10, 7, -1, 1, 9},
-                  {11, -1, 8, 14, -1},
-                  {12, -1, 4, -1, 13},
-                  {13, 9, -1, -1, -1},
-                  {14, 3, -1, -1, -1}};
+                  {11, -1, 8, 12, -1},
+                  {12, -1, 4, -1, 11}};
 
-int current_junction = 0; // initialises the arduino robot to be at the start
-int next_junction = 0;
-int i = 0; // tracking which stage of the standard path it is on
-int j = 0; // tracking which stage of the home path it is on
-int block_junction;
 
+int blockJunction;
+// robot will go in a loop to find blocks on junctions
 int standardpath[11] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+// robot will take different path to find the blocks in free space
 int freespacepath[10] = {0, 1, 6, 7, 8, 11, 12, 4, 5, 6};
+// paths to get from a node to node 0
 int homepaths[12][6] = {{1, 0, 0, 0, 0, 0},
                         {2, 1, 0, 0, 0, 0},
                         {3, 2, 1, 0, 0, 0},
@@ -44,27 +61,28 @@ int homepaths[12][6] = {{1, 0, 0, 0, 0, 0},
                         {12, 4, 5, 6, 1, 0}};
 int path[6];
 
+//find the direction the robot needs to go depending on current direction
 String FindDirection() {
   String forward = "forward";
   String left = "left";
   String right = "right";
   String back = "back";
-  if (nodes[current_junction].north == next_junction) {
+  if (nodes[currentJunction].north == nextJunction) {
       if (direction == "north") { direction="north"; return forward; }
       else if (direction == "east") { direction="north"; return left; }
       else if (direction == "west") { direction="north"; return right; }  
       else if (direction == "south") { direction="north"; return back; }  
-  } else if (nodes[current_junction].east == next_junction) {
+  } else if (nodes[currentJunction].east == nextJunction) {
       if (direction == "north") { direction="east"; return right; }
       else if (direction == "east") { direction="east"; return forward; }
       else if (direction == "west") { direction="east"; return back; }  
       else if (direction == "south") { direction="east"; return left; } 
-  } else if (nodes[current_junction].south == next_junction) {
+  } else if (nodes[currentJunction].south == nextJunction) {
       if (direction == "north") { direction="south"; return back; }
       else if (direction == "east") { direction="south"; return right; }
       else if (direction == "west") { direction="south"; return left; }  
       else if (direction == "south") { direction="south"; return forward; } 
-  } else if (nodes[current_junction].west ==  next_junction) {
+  } else if (nodes[currentJunction].west ==  nextJunction) {
       if (direction == "north") { direction="west"; return left; }
       else if (direction == "east") { direction="west"; return back; }
       else if (direction == "west") { direction="west"; return forward; }  
@@ -75,88 +93,49 @@ String FindDirection() {
   }
 }
 
-/*
-void MoveInDirection(String direction_to_go) { 
-  // function to turn left/right/go forward/go backward depending on the direction_to_go, and sets a new 
-  // direction once a turn has been made
-  // need to set junction_reached back to true once turning/moving is done
-  if (direction_to_go == "front") {
-    // ...
-  } else if (direction_to_go == "left") {
-    // ...
-  }
-}
-*/
-
-
-
-String junctionReached() { // blockFound to be FALSE only after the block dropped off
+//when a junction is reached, this function is called to tell the robot where to go
+String junctionReached() { 
+  // if no block, coninue on pre defined path
   if (blockFound == false) {
-    if (blocks_returned < 2) {
-      current_junction = standardpath[i];
-      next_junction = standardpath[i+1];
+    if (blocksReturned < 2) {
+      currentJunction = standardpath[i];
+      nextJunction = standardpath[i+1];
     } else {
-      current_junction = freespacepath[i];
-      next_junction = freespacepath[i+1];
+      currentJunction = freespacepath[i];
+      nextJunction = freespacepath[i+1];
     }
     i++;
     String direction_to_go = FindDirection();
+    Serial.println(direction_to_go);
     return direction_to_go;
+  // if holding a block, travel to node 0
   } else {
-    if (blocks_returned < 2) {
-      block_junction = standardpath[i];
+    if (blocksReturned < 2) {
+      blockJunction = standardpath[i];
     } else {
-      block_junction = freespacepath[i];
+      blockJunction = freespacepath[i+1];
+      Serial.print("Block Junction: ");
+      Serial.println(blockJunction);
     }
+    //creating the path for node 0
     for (int k = 0; k < 6; k++) {
-     path[k] = homepaths[block_junction - 1][k];
+     path[k] = homepaths[blockJunction - 1][k];
     }
+    Serial.print("Path: ");
     Serial.println(path[j]);
-    current_junction = path[j];
+    currentJunction = path[j];
     
-    if (current_junction != 0) {
-      next_junction = path[j+1];
+    if (currentJunction != 0) {
+      nextJunction = path[j+1];
       j++;
       String direction_to_go = FindDirection();
+      Serial.println(direction_to_go);
       return direction_to_go;
+    //once node 0 reached, return magentic turn to signify drop off phase started, and change state accordingly in main
     } else {
-      i = 0;  // resetting current_junction by resetting values of i and j for the next round of search
+      i = 0;  // resetting currentJunction by resetting values of i and j for the next round of search
       j = 0;
       return "magneticturn";
     }
   }
 }
-
-/*
-void CarryOutPath(int* path) {
-  int i = 0;
-  bool junction_reached = false; 
-  while (i < sizeof(path)) {
-    if (junction_reached = true) {
-      int current_node = path[i];
-      int next_node = path[i+1];
-      junction_reached = false;
-      String direction_to_go = FindDirection(current_node, next_junction, direction);
-      return direction_to_go;
-      i++;
-    }
-}
-
-void FindPath(current_node, end_node) {  
-}
-*/
-/*
-void setup() {
-  // put your setup code here, to run once:
-  Serial.begin(9600);
-  CarryOutPath(startingpath);
-  // once block found at a junction:
-  // detect if magnetic or not: if magnetic, FindPath(current_node, 11); else FindPath(current_node, 12);
-  FindPath(current_node, 11);
-}
-
-void loop() {
-  // put your main code here, to run repeatedly:
-
-}
-*/

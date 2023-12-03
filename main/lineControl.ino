@@ -1,4 +1,3 @@
-
 // setup the 4x line sensors
 void setLineSensorValues(){
   valLeft = digitalRead(leftPin);
@@ -26,23 +25,12 @@ int getLP(){
 }
 
 bool foundJunction(){
+  //return true if junction found
   setLineSensorValues();
   if ((valRLeft == 1) || (valRRight == 1)){
     return true; 
-  }else{
+  } else{
     return false;
   }
 }
 
-void straightenRear() {
-  while ((valRLeft == 0) && (valRRight == 1)){
-      Serial.println("INFO: straighten rear - rotate right");
-      setLineSensorValues();
-      setMotors(130,0);
-  }
-  while ((valRLeft == 1) && (valRRight == 0)){
-      Serial.println("INFO: straighten rear - rotate left");
-      setLineSensorValues();
-      setMotors(0,130);
-  }
-}

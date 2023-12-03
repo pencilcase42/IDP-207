@@ -1,18 +1,28 @@
-
-void setDistanceValue(){
+//get time of flight distance value
+void setTOFValue(){
   dist = sensor.readRangeSingleMillimeters();
 }
 
-void findMagneticType(){
+//get ultrasonic distance value
+void setUltraValue(){
+    // read the value from the sensor:
+  sensity = analogRead(sensityPin);
+  // turn the ledPin on
+  ultraDist = sensity * MAX_RANG / ADC_SOLUTION;//
+}
+
+// determine magnetic type with magnetic sensors
+bool getMagneticType(){
   // set magnetic
   val = digitalRead(magneticPin);
   if (val==HIGH){
-    magnetic = true;
+    return true;
   } else {
-    magnetic = false;
+    return false;
   }
 }
 
+// turn on the red LED if magnetic, and green if non-magnetic
 void turnOnMagneticLED(){
   Serial.println(magnetic);
   if (magnetic) {
@@ -22,6 +32,7 @@ void turnOnMagneticLED(){
   }
 }
 
+// turn off the magnet type LED
 void turnOffMagneticLED(){
   Serial.println(magnetic);
   if (magnetic) {
